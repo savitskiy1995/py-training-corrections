@@ -88,7 +88,7 @@ class ContactHelper:
         self.open_contacts_homepage()
         wd.find_element(By.CSS_SELECTOR,"a[href='edit.php?id=%s']" % id).click()
         self.fill_contact_form(new_contact_data)
-        wd.find_element_by_name("update").click()
+        wd.find_element(By.NAME, "update").click()
         self.open_contacts_homepage()
         self.contact_cache = None
 
