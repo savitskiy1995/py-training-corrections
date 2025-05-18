@@ -6,28 +6,33 @@ import random
 db = ORMfixture(host='127.0.0.1', name='addressbook', user='root', password='')
 
 
-def test_add_contact_to_group(app):
+def test_add_contact_to_group(app, orm):
     if len(db.get_contact_list()) == 0:
         app.contact.create_contact(Contact(firstname="Name", lastname="Lastname"))
     if len(db.get_group_list()) == 0:
         app.group.create(Group(name="Test"))
 
+    groups = orm.get_group_list()
+    contacts = orm.get_contact_list()
+    group_contacts = []
+    group_to_add = random.choice(groups)
+    contact_for_add = None
 
-    old_contacts = db.get_contact_list()
-    old_groups = db.get_group_list()
-    contact_from_old = random.choice(old_contacts)
-    group_from_old = random.choice(old_groups)
-    old_contacts_in_group = db.get_contacts_in_group(group_from_old)
-    if len(db.get_contact_list()) == len(old_contacts_in_group):
-            app.contact.create_contact(Contact(firstname="Michael", lastname="Jordan"))
-    app.contact.add_contact_to_group(contact_from_old, group_from_old)
-    new_contacts_in_group = db.get_contacts_in_group(group_from_old)
-    assert len(old_contacts_in_group) + 1 == len(new_contacts_in_group)
-    old_contacts_in_group.append(contact_from_old)
-    assert sorted(old_contacts_in_group, key=Contact.id_or_max) == sorted(new_contacts_in_group, key=Contact.id_or_max)
+    for group in groups:
+        group_contacts.extend(orm.get_contacts_in_group(group))
 
+    for contact in contacts:
+        if contact not in group_contacts:
+            contact_for_add = contact
+            break
 
+    if contact_for_add is None:
+        app.contact.create_contact(Contact(firstname="Test", lastname="Testovich"))
+        contact_for_add = orm.get_contact_list()[-1]
 
+    app.contact.add_contact_in_group(contact_for_add.id, group_to_add.id)
+    contacts_in_group = orm.get_contacts_in_group(group_to_add)
+    assert contact_for_add.id in [c.id for c in contacts_in_group]
 
 
 

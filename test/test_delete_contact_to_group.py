@@ -7,18 +7,29 @@ import random
 db = ORMfixture(host='127.0.0.1', name='addressbook', user='root', password='')
 
 
-def test_delete_contact_to_group(app):
-    if len(db.get_contact_list()) == 0:
-        app.contact.create(Contact(firstname="Ilon", lastname="Mozg"))
-    if len(db.get_group_list()) == 0:
+def test_del_contact_in_group(app, orm):
+    if len(orm.get_contact_list()) == 0:
+        app.contact.create_contact(Contact(firstname="Name", lastname="Lastname"))
+    if len(orm.get_group_list()) == 0:
         app.group.create(Group(name="Test"))
-    old_contacts = db.get_contact_list()
-    old_groups = db.get_group_list()
-    contact_id = random.choice(old_contacts).id
-    group_id = random.choice(old_groups).id
-    if len(db.get_contacts_in_group(Group(id='%s' % group_id))) == 0:
-        app.contact.add_contact_to_group(contact_id, group_id)
-    old_contacts_in_group = db.get_contacts_in_group(Group(id='%s' % group_id))
-    app.contact.delete_contact_from_group(group_id)
-    new_contacts_in_group = db.get_contacts_in_group(Group(id='%s' % group_id))
-    assert len(old_contacts_in_group) - 1 == len(new_contacts_in_group)
+
+    all_groups = orm.get_group_list()
+    contacts_with_groups = []
+
+    for group in all_groups:
+        group_contacts = orm.get_contacts_in_group(group)
+        if group_contacts:
+            selected_contact = random.choice(group_contacts)
+            contacts_with_groups.append((selected_contact, group))
+
+    if not contacts_with_groups:
+        random_contact = random.choice(orm.get_contact_list())
+        random_group = random.choice(all_groups)
+        app.contact.add_contact_in_group(random_contact.id, random_group.id)
+        contacts_with_groups.append((random_contact, random_group))
+
+    contact_to_remove, target_group = random.choice(contacts_with_groups)
+    app.contact.delete_contact_in_group(contact_to_remove.id, target_group.id)
+
+    contacts_not_in_group = orm.get_contacts_not_in_group(target_group)
+    assert contact_to_remove.id in [c.id for c in contacts_not_in_group]
