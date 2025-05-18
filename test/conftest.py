@@ -5,6 +5,7 @@ import importlib
 import jsonpickle
 from fixture.application import Application
 from fixture.db import DbFixture
+from fixture.orm import ORMfixture
 
 fixture = None
 target = None
@@ -46,6 +47,12 @@ def load_config(file):
         with open(config_file) as f:
             target = json.load(f)
     return target
+
+@pytest.fixture(scope='session')
+def orm(request):
+    orm_config = load_config(request.config.getoption("--target"))['db']
+    ormfixture = ORMfixture(host=orm_config['host'], name=orm_config['name'], user=orm_config['user'], password=orm_config['password'])
+    return ormfixture
 
 def pytest_addoption(parser):
     parser.addoption("--browser", action="store", default="chrome")

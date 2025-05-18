@@ -11,6 +11,8 @@ def test_add_contact_to_group(app):
         app.contact.create_contact(Contact(firstname="Name", lastname="Lastname"))
     if len(db.get_group_list()) == 0:
         app.group.create(Group(name="Test"))
+
+
     old_contacts = db.get_contact_list()
     old_groups = db.get_group_list()
     contact_from_old = random.choice(old_contacts)

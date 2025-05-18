@@ -227,13 +227,62 @@ class ContactHelper:
         workphone = workphone_match.group(1) if workphone_match else ""
         mobilephone = mobilephone_match.group(1) if mobilephone_match else ""
 
-        return Contact(
-            home_phone=homephone,
-            workphone=workphone,
-            mobilephone=mobilephone
-        )
+        full_name = wd.find_element(By.CSS_SELECTOR, "#content > b").text
+        name_parts = full_name.split()
+        firstname = name_parts[0]
+        lastname = name_parts[-1]
+
+        all_lines = [line.strip() for line in text.split('\n') if line.strip()]
+        address = None
+        for i, line in enumerate(all_lines):
+            if 'H:' in line:
+                address = all_lines[i - 1]
+                break
+
+        email_elements = wd.find_elements(By.XPATH, "//a[starts-with(@href, 'mailto:')]")
+        emails = [email_element.get_attribute("href").replace("mailto:", "") for email_element in email_elements]
+        email = emails[0] if len(emails) > 0 else None
+        email2 = emails[1] if len(emails) > 1 else None
+        email3 = emails[2] if len(emails) > 2 else None
+
+        return Contact(home_phone=homephone, mobilephone=mobilephone, workphone=workphone,
+                       firstname=firstname, lastname=lastname,
+                       address=address, email=email, email2=email2, email3=email3)
 
     def open_home_page(self):
         wd = self.app.wd
         if not wd.current_url.endswith("addressbook/"):
             wd.find_element(By.XPATH, "//a[contains(.,'home')]").click()
+
+    def select_group_in_group_list_by_id(self, group_id):
+        wd = self.app.wd
+        select = wd.find_element(By.NAME, "to_group")
+        group_in_group_list = select.find_element(By.CSS_SELECTOR, "option[value='%s']" % group_id)
+        self.group_name = group_in_group_list.text
+        group_in_group_list.click()
+
+    def return_to_group_page_name(self):
+        wd = self.app.wd
+        wd.find_element(By.LINK_TEXT, f'group page "{self.group_name}"').click()
+
+    def add_contact_in_group(self, contact_id, group_id):
+        wd = self.app.wd
+        self.open_home_page()
+        self.select_contact_by_id(contact_id)
+        self.select_group_in_group_list_by_id(group_id)
+        wd.find_element(By.NAME, "add").click()
+        self.return_to_group_page_name()
+
+    def select_group_in_filter_by_id(self, group_id):
+        wd = self.app.wd
+        select = wd.find_element(By.NAME, "group")
+        group_in_group_list = select.find_element(By.CSS_SELECTOR, "option[value='%s']" % group_id)
+        self.group_name = group_in_group_list.text
+        group_in_group_list.click()
+
+    def delete_contact_in_group(self, contact_id, group_id):
+        wd = self.app.wd
+        self.select_group_in_filter_by_id(group_id)
+        self.select_contact_by_id(contact_id)
+        wd.find_element(By.NAME, "remove").click()
+        self.return_to_group_page_name()

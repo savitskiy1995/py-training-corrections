@@ -32,11 +32,12 @@ class DbFixture:
         cursor = self.connection.cursor()
         try:
             cursor.execute(
-                "select id, firstname, lastname, home, mobile, work, email, email2, email3 from addressbook")
+                "select id, firstname, lastname, home, mobile, work, address, email, email2, email3 from addressbook")
             for row in cursor:
-                (id, firstname, lastname, home, mobile, work, fax, email, email2, email3) = row
+                (id, firstname, lastname, home, mobile, work, address, email, email2, email3) = row
                 list.append(
                     Contact(id=str(id), firstname=firstname, lastname=lastname, home_phone=home,
+                            address= address,
                             mobilephone=mobile, workphone=work, email=email, email2=email2, email3=email3))
         finally:
             cursor.close()
