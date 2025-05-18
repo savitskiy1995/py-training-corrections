@@ -2,42 +2,50 @@ from fixture.orm import ORMfixture
 from model.group import Group
 from model.contact import Contact
 import random
-
-db = ORMfixture(host='127.0.0.1', name='addressbook', user='root', password='')
+import pytest
+import time
 
 
 def test_add_contact_to_group(app, orm):
-    if len(db.get_contact_list()) == 0:
-        app.contact.create_contact(Contact(firstname="Name", lastname="Lastname"))
-    if len(db.get_group_list()) == 0:
-        app.group.create(Group(name="Test"))
+    # 1. Подготовка данных
+    if not orm.get_contact_list():
+        app.contact.create_contact(Contact(firstname="Test", lastname="Contact"))
+    if not orm.get_group_list():
+        app.group.create(Group(name="Test Group"))
 
+    # 2. Выбор группы и контакта
     groups = orm.get_group_list()
-    contacts = orm.get_contact_list()
-    group_contacts = []
-    group_to_add = random.choice(groups)
-    contact_for_add = None
+    group = random.choice(groups)
 
-    for group in groups:
-        group_contacts.extend(orm.get_contacts_in_group(group))
+    # Находим контакт, которого нет в группе
+    contacts_not_in_group = orm.get_contacts_not_in_group(group)
+    if contacts_not_in_group:
+        contact = random.choice(contacts_not_in_group)
+    else:
+        # Если все контакты уже в группе, создаём новый
+        app.contact.create_contact(Contact(firstname="New", lastname="Contact"))
+        contact = orm.get_contact_list()[-1]
 
-    for contact in contacts:
-        if contact not in group_contacts:
-            contact_for_add = contact
-            break
+    # 3. Сохраняем текущее состояние группы
+    old_contacts_in_group = orm.get_contacts_in_group(group)
+    old_count = len(old_contacts_in_group)
 
-    if contact_for_add is None:
-        app.contact.create_contact(Contact(firstname="Test", lastname="Testovich"))
-        contact_for_add = orm.get_contact_list()[-1]
+    # 4. Добавляем контакт в группу через интерфейс
+    app.contact.add_contact_in_group(contact.id, group.id)
 
-    app.contact.add_contact_in_group(contact_for_add.id, group_to_add.id)
-    contacts_in_group = orm.get_contacts_in_group(group_to_add)
-    assert contact_for_add.id in [c.id for c in contacts_in_group]
+    # 5. Проверяем, что контакт добавился (через ORM)
+    new_contacts_in_group = orm.get_contacts_in_group(group)
+    new_count = len(new_contacts_in_group)
 
+    assert new_count == old_count + 1, \
+        f"Количество контактов в группе не изменилось. Было: {old_count}, стало: {new_count}"
 
+    assert contact.id in [c.id for c in new_contacts_in_group], \
+        f"Контакт с ID {contact.id} не найден в группе {group.id}"
 
-
-
-
-
-
+    # 6. Дополнительная проверка через интерфейс
+    app.contact.open_home_page()
+    app.contact.select_group_in_filter_by_id(group.id)
+    ui_contacts = app.contact.get_contact_list()
+    assert contact.id in [c.id for c in ui_contacts], \
+        f"Контакт с ID {contact.id} не отображается в группе {group.id} в интерфейсе"

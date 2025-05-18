@@ -1,8 +1,12 @@
 import re
 
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support import wait
 from selenium.webdriver.support.ui import Select
+from selenium.webdriver.support import expected_conditions as EC
 import time
+
+from selenium.webdriver.support.wait import WebDriverWait
 
 from model.contact import Contact
 
@@ -10,6 +14,7 @@ from model.contact import Contact
 class ContactHelper:
 
     def __init__(self, app):
+        self.group_name = None
         self.app = app
 
 
@@ -118,7 +123,9 @@ class ContactHelper:
     def open_contacts_homepage(self):
         wd = self.app.wd
         if not wd.current_url.endswith("addressbook/"):
-            wd.find_element(By.LINK_TEXT,"home").click()
+            waiting = WebDriverWait(wd, 10)
+            home_link = waiting.until(EC.visibility_of_element_located((By.LINK_TEXT, "home")))
+            home_link.click()
 
 
     def return_to_home_page(self):
@@ -174,8 +181,8 @@ class ContactHelper:
                 email = cells[4].text
                 all_phones = cells[5].text
 
-                email = email if email else None
-                all_phones = all_phones if all_phones else None
+                email = email if email else ''
+                all_phones = all_phones if all_phones else ''
 
                 self.contacts_cache.append(Contact(
                     id=id,
@@ -196,7 +203,7 @@ class ContactHelper:
         homephone = wd.find_element(By.NAME, "home").get_attribute("value")
         workphone = wd.find_element(By.NAME, "work").get_attribute("value")
         mobilephone = wd.find_element(By.NAME, "mobile").get_attribute("value")
-        address = wd.find_element(By.NAME,"address").get_attribute("value")
+        address = wd.find_element(By.NAME, "address").get_attribute("value")
         email = wd.find_element(By.NAME,"email").get_attribute("value")
         email2 = wd.find_element(By.NAME,"email2").get_attribute("value")
         email3 = wd.find_element(By.NAME,"email3").get_attribute("value")
@@ -229,21 +236,47 @@ class ContactHelper:
 
         full_name = wd.find_element(By.CSS_SELECTOR, "#content > b").text
         name_parts = full_name.split()
-        firstname = name_parts[0]
-        lastname = name_parts[-1]
+        if not name_parts:
+            firstname = ""
+            lastname = ""
+        elif len(name_parts) == 1:
+            firstname = name_parts[0]
+            lastname = ""
+        else:
+            firstname = name_parts[0]
+            lastname = " ".join(name_parts[1:])
 
         all_lines = [line.strip() for line in text.split('\n') if line.strip()]
-        address = None
+
+        company = ""
+        address = ""
+
+        # Ищем строку с телефонами
         for i, line in enumerate(all_lines):
-            if 'H:' in line:
-                address = all_lines[i - 1]
+            if 'H:' in line or 'M:' in line or 'W:' in line:
+                # Адрес - это последняя строка перед телефонами, которая:
+                # 1. Не пустая
+                # 2. Не содержит ":" (чтобы исключить другие телефоны)
+                # 3. Не является именем (первая строка)
+
+                if i > 1:  # Есть хотя бы одна строка перед телефонами
+                    potential_company = all_lines[i - 1]
+                    if potential_company and ':' not in potential_company:
+                        company = potential_company
+
+                        # Если есть еще строка перед адресом - это компания
+                        if i > 2:
+                            potential_address = all_lines[i - 2]
+                            if potential_address and ':' not in potential_address:
+                                address = potential_address
                 break
 
+        address = address or ""
         email_elements = wd.find_elements(By.XPATH, "//a[starts-with(@href, 'mailto:')]")
         emails = [email_element.get_attribute("href").replace("mailto:", "") for email_element in email_elements]
-        email = emails[0] if len(emails) > 0 else None
-        email2 = emails[1] if len(emails) > 1 else None
-        email3 = emails[2] if len(emails) > 2 else None
+        email = emails[0] if len(emails) > 0 else ""
+        email2 = emails[1] if len(emails) > 1 else ""
+        email3 = emails[2] if len(emails) > 2 else ""
 
         return Contact(home_phone=homephone, mobilephone=mobilephone, workphone=workphone,
                        firstname=firstname, lastname=lastname,
@@ -268,17 +301,29 @@ class ContactHelper:
     def add_contact_in_group(self, contact_id, group_id):
         wd = self.app.wd
         self.open_home_page()
+
+        # Выбираем контакт
         self.select_contact_by_id(contact_id)
-        self.select_group_in_group_list_by_id(group_id)
+
+        select = Select(wd.find_element(By.NAME, "to_group"))
+        select.select_by_value(str(group_id))
+
+        # Нажимаем "Add to"
         wd.find_element(By.NAME, "add").click()
-        self.return_to_group_page_name()
+
+        # Возвращаемся на страницу группы (используем ID группы)
+        #wd.find_element(By.CSS_SELECTOR, f"a[href='./?group={group_id}']").click()
 
     def select_group_in_filter_by_id(self, group_id):
         wd = self.app.wd
-        select = wd.find_element(By.NAME, "group")
-        group_in_group_list = select.find_element(By.CSS_SELECTOR, "option[value='%s']" % group_id)
-        self.group_name = group_in_group_list.text
-        group_in_group_list.click()
+        self.open_home_page()
+
+        # Выбираем группу в фильтре
+        select = Select(wd.find_element(By.NAME, "group"))
+        select.select_by_value(str(group_id))
+
+        # Сохраняем имя группы для последующих действий
+        self.group_name = select.first_selected_option.text
 
     def delete_contact_in_group(self, contact_id, group_id):
         wd = self.app.wd

@@ -4,9 +4,6 @@ from model.contact import Contact
 
 import random
 
-db = ORMfixture(host='127.0.0.1', name='addressbook', user='root', password='')
-
-
 def test_del_contact_in_group(app, orm):
     if len(orm.get_contact_list()) == 0:
         app.contact.create_contact(Contact(firstname="Name", lastname="Lastname"))

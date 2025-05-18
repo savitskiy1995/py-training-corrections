@@ -1,8 +1,10 @@
 from pony.orm import *
 from datetime import datetime
+
+from pymysql.converters import conversions
+
 from model.group import Group
 from model.contact import Contact
-from pymysql.converters import encoders, decoders, convert_mysql_timestamp
 
 
 class ORMfixture:
@@ -26,19 +28,17 @@ class ORMfixture:
         groups = Set(lambda: ORMfixture.ORMGroup, table='address_in_groups', column='group_id', reverse='contacts', lazy=True)
 
     def __init__(self, host, name, user, password):
-        conv = encoders
-        conv.update(decoders)
-        conv[datetime] = convert_mysql_timestamp
-        self.db.bind('mysql', host=host, database=name, user=user, password=password, conv=conv)
+        self.db.bind('mysql', host=host, database=name, user=user, password=password, conv=conversions)
         self.db.generate_mapping()
         sql_debug(True)
 
-    def convert_groups_to_model(selfself, groups):
+
+    def convert_groups_to_model(self, groups):
         def convert(group):
-            return Group(id=str(group.id), name=group.name, header=group.header, footer=group.footer)
+            return Group(id=str(group.id), name=group.name, header=group.header)
         return list(map(convert, groups))
 
-    def convert_contacts_to_model(selfself, contacts):
+    def convert_contacts_to_model(self, contacts):
         def convert(contact):
             return Contact(id=str(contact.id), firstname=contact.firstname, lastname=contact.lastname)
         return list(map(convert, contacts))
@@ -53,11 +53,12 @@ class ORMfixture:
 
     @db_session
     def get_contacts_in_group(self, group):
-       orm_group = list(select(g for g in ORMfixture.ORMGroup if g.id == group.id))[0]
-       return self.convert_contacts_to_model(orm_group.contacts)
+        orm_group = list(select(g for g in ORMfixture.ORMGroup if g.id == group.id))[0]
+        return self.convert_contacts_to_model(orm_group.contacts)
 
     @db_session
     def get_contacts_not_in_group(self, group):
        orm_group = list(select(g for g in ORMfixture.ORMGroup if g.id == group.id))[0]
        return self.convert_contacts_to_model(select(c for c in ORMfixture.ORMContact if c.deprecated is None
                                                     and orm_group not in c.groups))
+
