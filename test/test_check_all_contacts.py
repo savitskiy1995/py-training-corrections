@@ -4,7 +4,7 @@ from model.contact import Contact
 
 def test_check_all_contact(app, db):
     contact_from_home_page = sorted(app.contact.get_contact_list(), key=Contact.id_or_max)
-    contact_from_db = sorted(db.get_contact_list(), key=Contact.id_or_max)
+    contact_from_db = sorted(db.get_contact_list_from_db(), key=Contact.id_or_max)
 
     for c in range(len(contact_from_home_page)):
         assert contact_from_home_page[c].all_phones_from_home_page == merge_phones_like_on_home_page(contact_from_db[c])
