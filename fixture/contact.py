@@ -312,22 +312,26 @@ class ContactHelper:
         wd.find_element(By.NAME, "add").click()
 
         # Возвращаемся на страницу группы (используем ID группы)
-        #wd.find_element(By.CSS_SELECTOR, f"a[href='./?group={group_id}']").click()
+        link = WebDriverWait(wd, 10).until(
+            EC.element_to_be_clickable((By.XPATH, '//a[contains(text(), "group page")]'))
+        )
+        link.click()
 
     def select_group_in_filter_by_id(self, group_id):
         wd = self.app.wd
         self.open_home_page()
-
         # Выбираем группу в фильтре
-        select = Select(wd.find_element(By.NAME, "group"))
+        select = Select(wd.find_element(By.XPATH, "//select[@name='group']"))
         select.select_by_value(str(group_id))
+        #wd.find_element(By.CSS_SELECTOR, "input[value='%s']" % group_id).click()
 
-        # Сохраняем имя группы для последующих действий
-        self.group_name = select.first_selected_option.text
 
     def delete_contact_in_group(self, contact_id, group_id):
         wd = self.app.wd
         self.select_group_in_filter_by_id(group_id)
         self.select_contact_by_id(contact_id)
         wd.find_element(By.NAME, "remove").click()
-        self.return_to_group_page_name()
+        link = WebDriverWait(wd, 10).until(
+            EC.element_to_be_clickable((By.XPATH, '//a[contains(text(), "group page")]'))
+        )
+        link.click()
