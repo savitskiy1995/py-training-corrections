@@ -39,9 +39,9 @@ class GroupHelper:
         self.delete_group_by_index(0)
 
 
-    def select_group_by_index(self, index):
+    def select_group_by_index(self, id):
         wd = self.app.wd
-        wd.find_elements(By.NAME, "selected[]")[index].click()
+        wd.find_element(By.CSS_SELECTOR,"input[value='%s']" % id).click()
 
 
     def delete_group_by_index(self, index):

@@ -84,7 +84,7 @@ class ContactHelper:
         self.open_contacts_homepage()
         self.select_contact_by_id(id)
         wd.find_element(By.CSS_SELECTOR,"input[value='Delete']").click()
-        wd.switch_to_alert().accept()
+        #wd.switch_to_alert().accept()
         self.open_contacts_homepage()
         self.contact_cache = None
 
